@@ -1,0 +1,963 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+src/
+  assets/
+    imgs/
+      NIZOBg.png
+    info/
+      userInfo.md
+  commands/
+    moderation/
+      ban.ts
+      clearChannel.ts
+      waiting.ts
+    reply/
+      botInfo.ts
+      ping.ts
+      userInfo.ts
+  events/
+    clientOn/
+      interactionCreate.ts
+      modalCreate.ts
+      welcome.ts
+    clientOnce/
+      readyClient.ts
+  handlers/
+    command.ts
+    event.ts
+  structures/
+    customClient.ts
+.gitignore
+client.ts
+CONTRIBUTING.md
+index.ts
+LICENSE.md
+package.json
+README.md
+tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="src/assets/info/userInfo.md">
+
+</file>
+
+<file path="src/commands/moderation/ban.ts">
+import { ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder, AttachmentBuilder, GuildMember } from "discord.js";
+import { createCanvas, loadImage } from "@napi-rs/canvas";
+import chalk from "chalk";
+
+export default {
+    data: new SlashCommandBuilder()
+        .setName('ban')
+        .setDescription('Banea a usuarios por motivos claros, para una mejor experiencia.')
+        .addUserOption(options => 
+            options
+                .setName('usuario')
+                .setDescription('Usuario al que quieres efectuar el baneo.')
+                .setRequired(true)
+        ),
+        
+    async execute(interaction: ChatInputCommandInteraction) {
+        await interaction.deferReply();
+
+        const member = interaction.options.getMember('usuario') as GuildMember;
+        if (!member) {
+            return interaction.editReply("No se pudo encontrar a ese miembro en el servidor.");
+        }
+
+        try {
+            const canvas = createCanvas(1024, 520);
+            const ctx = canvas.getContext('2d');
+
+            const urlFondo = "https://drive.google.com/file/d/1B9HMMr-HqRX6mRgLnWAjdyN_P11J3T7n/view?usp=sharing"; 
+            const fondo = await loadImage(urlFondo);
+            ctx.drawImage(fondo, 0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            ctx.fillRect(40, 40, canvas.width - 80, canvas.height - 80);
+
+            const avatarURL = member.user.displayAvatarURL({ extension: 'png', size: 256 });
+            const avatarImg = await loadImage(avatarURL);
+            
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(512, 160, 90, 0, Math.PI * 2, true);
+            ctx.closePath();
+            ctx.clip();
+            ctx.drawImage(avatarImg, 422, 70, 180, 180);
+            ctx.restore();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+
+            ctx.font = 'bold 48px monospace';
+            ctx.fillText(member.user.tag, 512, 310);
+
+            ctx.fillStyle = '#ff4d4d';
+            ctx.font = 'bold 64px monospace';
+            ctx.fillText('USUARIO BANEADO', 512, 400);
+
+            const buffer = canvas.toBuffer('image/png');
+            const attachment = new AttachmentBuilder(buffer, { name: 'ban-card.png' });
+
+            const embed = new EmbedBuilder()
+                .setColor([255, 77, 77])
+                .setTitle(`🚨 Acción Disciplinaria: Ban`)
+                .setDescription(`El usuario ${member} ha sido vetado del servidor de manera exitosa.`)
+                .setImage('attachment://ban-card.png')
+                .setTimestamp();
+
+            await interaction.editReply({
+                embeds: [embed],
+                files: [attachment]
+            });
+
+            await member.ban({ reason: 'Baneado mediante comando' });
+
+        } catch (error) {
+            console.error(chalk.red("Error al generar la imagen de Canvas:"), error);
+            await interaction.editReply("Hubo un error interno al intentar procesar la imagen del ban.");
+        }
+    }
+};
+</file>
+
+<file path="src/commands/moderation/clearChannel.ts">
+import chalk from "chalk";
+import { ChannelType, ChatInputCommandInteraction, SlashCommandBuilder, Snowflake, TextChannel, User, Collection, Message } from "discord.js";
+import "dotenv/config";
+
+export default {
+    data: new SlashCommandBuilder()
+        .setName("clearchannel")
+        .setDescription("Limpia la cantidad de mensajes de un usuario que desees con un solo comando")
+        .addUserOption(options =>
+            options
+                .setName("user")
+                .setDescription("Proporciona el usuario del que quieres eliminar los mensajes")
+                .setRequired(true)
+        )
+        .addNumberOption(options =>
+            options
+                .setName("quantity")
+                .setDescription("Cantidad de mensajes que deseas borrar")
+                .setRequired(true)
+                .setMinValue(1)
+                .setMaxValue(1000)
+        )
+        .addChannelOption(options =>
+            options
+                .addChannelTypes(ChannelType.GuildText)
+                .setName("channel")
+                .setDescription("Canal del que quieres eliminar los mensajes")
+                .setRequired(true)
+        ),
+
+    async execute(interaction: ChatInputCommandInteraction) {
+        await interaction.deferReply({ ephemeral: true });
+
+        const user = interaction.options.getUser("user", true) as User;
+        const channel = interaction.options.getChannel("channel", true) as TextChannel;
+        let quantity = interaction.options.getNumber("quantity", true) as number;
+
+        let before: Snowflake | undefined;
+        let totalDeleted = 0;
+
+        const timeOut = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+        while (quantity > 0) {
+            // 1. Obtener mensajes históricos del canal (máximo 100 por petición)
+            const mSelected: Collection<string, Message> = await channel.messages.fetch({
+                limit: 100,
+                before
+            });
+
+            const messagesArray = Array.from(mSelected.values());
+
+            // Si ya no hay más mensajes en el historial del canal, rompemos el bucle
+            if (messagesArray.length === 0) {
+                break;
+            }
+
+            // 2. Filtrar únicamente los mensajes que pertenecen al usuario objetivo
+            const messagesToDelete: Message[] = [];
+            for (const msg of messagesArray) {
+                if (messagesToDelete.length >= quantity) break;
+
+                // Solo agregamos si coincide el ID de autor y el mensaje tiene menos de 14 días (bulkDelete crash prevention)
+                const catorceDiasEnMs = 14 * 24 * 60 * 60 * 1000;
+                const esValidoParaBulk = (Date.now() - msg.createdTimestamp) < catorceDiasEnMs;
+
+                if (msg.author.id === user.id && esValidoParaBulk) {
+                    messagesToDelete.push(msg);
+                }
+            }
+
+            // Actualizamos el puntero "before" con el último mensaje evaluado del lote para la siguiente vuelta
+            const lastMessage = messagesArray.at(-1);
+            if (!lastMessage) break;
+            before = lastMessage.id;
+
+            // 3. Ejecutar la eliminación masiva (máximo 100 por API request)
+            if (messagesToDelete.length > 0) {
+                try {
+                    // Si el filtro recolectó solo 1 mensaje, bulkDelete no funciona (mínimo requiere 2), usamos delete manual
+                    if (messagesToDelete.length === 1) {
+                        await messagesToDelete[0].delete();
+                    } else {
+                        await channel.bulkDelete(messagesToDelete);
+                    }
+
+                    const deletedThisRound = messagesToDelete.length;
+                    quantity -= deletedThisRound;
+                    totalDeleted += deletedThisRound;
+
+                    await interaction.editReply(
+                        `Se han eliminado ${totalDeleted} mensajes de **${user.tag}**. Restan ${quantity} por buscar.`
+                    );
+
+                } catch (err) {
+                    console.error(chalk.bgRed("Error al borrar mensajes:"), err);
+                    break;
+                }
+            }
+
+            // 4. Si aún queda cantidad pendiente, esperamos para evitar el Rate Limit (Ratelimit de Discord)
+            if (quantity > 0) {
+                console.log(chalk.bold.gray("Esperando 3 segundos para evitar rate-limits..."));
+                await timeOut(3000); // 30 segundos era demasiado tiempo muerto para el usuario, 3s es balanceado.
+            }
+        }
+
+        await interaction.editReply(`✅ Limpieza completada. Se eliminaron con éxito un total de **${totalDeleted}** mensajes de **${user.tag}**.`);
+    }
+};
+</file>
+
+<file path="src/commands/moderation/waiting.ts">
+import { ActionRowBuilder, ChatInputCommandInteraction, MessageFlags, ModalBuilder, ModalSubmitInteraction, SlashCommandBuilder, TextChannel, TextInputBuilder, TextInputStyle } from "discord.js";
+import client from '#/client';
+import 'dotenv/config';
+
+export default {
+    data: new SlashCommandBuilder()
+    .setName('waiting')
+    .setDescription('Haz que un usuario se vea temporalmente incapaz de hacer nada.')
+    .addUserOption(options =>
+        options
+        .setName('usuario')
+        .setDescription('Usuario al que quieres aplicar el baneo.')
+        .setRequired(true)
+    ),
+
+    async execute(interaction:ChatInputCommandInteraction) {
+        const user = interaction.options.getMember('usuario');
+        const channelId = process.env['moderationChannel'] as any;
+        const channel = client.channels.cache.get(channelId) as TextChannel;
+
+        const form = new ModalBuilder()
+        .setCustomId('waiting-form')
+        .setTitle('Formulario para Efectuar Baneo');
+
+        const title = new TextInputBuilder()
+        .setCustomId('title')
+        .setMaxLength(50)
+        .setMinLength(10)
+        .setStyle(TextInputStyle.Short)
+        .setLabel('Definición')
+        .setPlaceholder('Define brevemente, siempre con respeto...')
+        .setRequired(true);
+
+        const body = new TextInputBuilder()
+        .setCustomId('body')
+        .setStyle(TextInputStyle.Paragraph)
+        .setLabel('Desarrollo')
+        .setPlaceholder('Desarrolla la situación pero sin pasarte ;)')
+        .setMaxLength(300)
+        .setMinLength(40)
+        .setRequired(true);
+
+        const rowTitle = new ActionRowBuilder<TextInputBuilder>().addComponents(title);
+        const rowBody = new ActionRowBuilder<TextInputBuilder>().addComponents(body);
+
+        form.addComponents(rowTitle, rowBody);
+
+        
+
+        await interaction.showModal(form);
+    }
+}
+</file>
+
+<file path="src/commands/reply/botInfo.ts">
+import { ChatInputCommandInteraction, MessageFlags, SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } from "discord.js";
+import { createCanvas, loadImage } from "@napi-rs/canvas";
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+
+
+export default {
+    data: new SlashCommandBuilder()
+    .setName('botinfo')
+    .setDescription('Consigue la información del bot.'),
+    async execute(interaction:ChatInputCommandInteraction) {
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = path.dirname(__filename);
+
+        const canvas = createCanvas(1024, 500);
+        const ctx = canvas.getContext('2d');
+
+        const rutaFondo = path.join(__dirname, '../../assets/imgs/NIZOBg.png');
+        const fondo = await loadImage(rutaFondo);
+        ctx.drawImage(fondo, 0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+        const radio = 120;
+        const x = canvas.width / 2;
+        const y = 160;
+
+        ctx.beginPath();
+        ctx.arc(x, y, radio, 0, Math.PI * 2, true);
+        ctx.closePath();
+        ctx.clip();
+
+        const buffer = canvas.toBuffer('image/png'); 
+        const attachment = new AttachmentBuilder(buffer, { name: 'image.png' });
+
+        const embed = new EmbedBuilder()
+        .setColor([255, 255, 255])
+        .setImage('attachment://image.png')
+        .setDescription('# KNIGHT\nKnight es el bot oficial de NIZ00LAX, usado para unificar todos los bots en uno solo.\nSi bien desarrollarlo no es sencillo, aún le queda mucho y las cosas pueden cambiar.\n\nEsperamos que lo useis a menudo :D')
+        .setURL('https://knightBot.pages.dev')
+
+        interaction.reply({
+            embeds: [embed],
+            files: [attachment],
+            flags: MessageFlags.Ephemeral
+        });
+    }
+}
+</file>
+
+<file path="src/commands/reply/ping.ts">
+import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
+
+export default {
+  data: new SlashCommandBuilder()
+    .setName('ping')
+    .setDescription('Asegurate de que Knight esta funcionando.'),
+  async execute(interaction: ChatInputCommandInteraction) {
+    interaction.reply({
+      content: `Gracias por preocuparte por el estado de **Knight**`,
+      flags: 64
+    });
+  }
+}
+</file>
+
+<file path="src/commands/reply/userInfo.ts">
+import { User, SlashCommandBuilder, EmbedBuilder, AttachmentBuilder, ChatInputCommandInteraction, MessageFlags } from "discord.js";
+import path from 'node:path';
+import { fileURLToPath } from "node:url";
+import { createCanvas, loadImage } from "@napi-rs/canvas";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export default {
+    data: new SlashCommandBuilder()
+    .setName('userinfo')
+    .setDescription('Recibe una cierta información sobre los usuarios de nuestro servidor.')
+    .addUserOption(options =>
+        options
+        .setName('usuario')
+        .setDescription('Si dejas este apartado vacio, entonces la información que se proporcionará sera sobre ti mismo.')
+    ),
+
+    async execute(interaction:ChatInputCommandInteraction) {
+        const user = interaction.options.getUser('usuario') as User;
+        const canvas = createCanvas(1024, 500);
+        const ctx = canvas.getContext('2d');
+
+        const rutaFondo = path.join(__dirname, '../../assets/imgs/NIZOBg.png');
+        const fondo = await loadImage(rutaFondo);
+        ctx.drawImage(fondo, 0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+        const radio = 120;
+        const x = canvas.width / 2;
+        const y = 250;
+
+        ctx.beginPath();
+        ctx.arc(x, y, radio, 0, Math.PI * 2, true);
+        ctx.closePath();
+        ctx.clip();
+
+        const avatarURL = user.displayAvatarURL({ extension: 'png', size: 512 });
+        const avatar = await loadImage(avatarURL);
+        ctx.drawImage(avatar, x - radio, y - radio, radio * 2, radio * 2);
+        ctx.restore();
+
+        const buffer = canvas.toBuffer('image/png');
+        const attachment = new AttachmentBuilder(buffer, { name: 'user-image.png' });
+
+        const embed = new EmbedBuilder()
+            .setColor([255, 255, 255])
+            .setImage('attachment://user-image.png')
+            .setDescription(`# ${user.globalName}\n Este usuario **cuenta con esta información,**
+            en caso de ***necesitar más información el bot
+            ya es incapaz de proporcionarla por la seguridad
+            de los usuarios.***\n\n **Nombre Global:** ${user.globalName}\n
+            **Nombre de Usuario:** ${user.username}\n
+            **Id de Usuario:** ${user.id}\n\n **¿Es un bot?:** ${user.bot}`)
+            .setURL('https://pages.dev');
+
+        interaction.reply({
+            embeds:[embed],
+            files:[attachment],
+            flags:64
+        });
+    }
+}
+</file>
+
+<file path="src/events/clientOn/interactionCreate.ts">
+import { Events, MessageFlags, Interaction } from "discord.js";
+import client from "#/client";
+import chalk from "chalk";
+
+export default {
+  name: Events.InteractionCreate,
+  once: false,
+
+  async execute(interaction: Interaction) {
+    if (!interaction.isChatInputCommand()) return;
+
+    const command = client.commands.get(interaction.commandName);
+
+    if (!command) {
+      console.error(
+        chalk.bold.redBright(
+          `No command named ${interaction.commandName}, please check it out.`
+        )
+      );
+      return;
+    }
+
+    try {
+      await command.execute(interaction);
+    } catch (err) {
+      console.error(chalk.bold.red(`Error: ${err}`));
+
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp({
+          content: "Hubo un error al ejecutar el comando.",
+          flags: MessageFlags.Ephemeral,
+        });
+      } else {
+        await interaction.reply({
+          content: "Hubo un error al ejecutar el comando.",
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+    }
+  },
+};
+</file>
+
+<file path="src/events/clientOn/modalCreate.ts">
+import { EmbedBuilder, Events, Interaction, MessageFlags, AttachmentBuilder } from "discord.js";
+import 'dotenv/config';
+import { createCanvas, loadImage } from "@napi-rs/canvas";
+
+export default {
+  name: Events.InteractionCreate,
+  once: false,
+
+  async execute(interaction:Interaction) {
+    if (!interaction.isModalSubmit()) return;
+
+    if (interaction.customId === "ban-form") {
+
+    }
+
+    else if (interaction.customId === "waiting-form") {
+      const title = interaction.fields.getTextInputValue("title");
+      const body = interaction.fields.getTextInputValue("body");
+      
+      const canvas = createCanvas(1024, 520);
+      const ctx = canvas.getContext('2d');
+
+      const urlFondo = "https://drive.google.com/file/d/1B9HMMr-HqRX6mRgLnWAjdyN_P11J3T7n/view?usp=sharing"; 
+      const fondo = await loadImage(urlFondo);
+      ctx.drawImage(fondo, 0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.fillRect(40, 40, canvas.width - 80, canvas.height - 80);
+
+      const avatarURL = member.user.displayAvatarURL({ extension: 'png', size: 256 });
+      const avatarImg = await loadImage(avatarURL);
+      
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(512, 160, 90, 0, Math.PI * 2, true);
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(avatarImg, 422, 70, 180, 180);
+      ctx.restore();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+
+      ctx.font = 'bold 48px monospace';
+      ctx.fillText(member.user.tag, 512, 310);
+
+      ctx.fillStyle = '#ff4d4d';
+      ctx.font = 'bold 64px monospace';
+      ctx.fillText('USUARIO BANEADO', 512, 400);
+
+      const buffer = canvas.toBuffer('image/png');
+      const attachment = new AttachmentBuilder(buffer, { name: 'waiting-card.png' });
+
+      const embed = new EmbedBuilder()
+          .setColor([255, 77, 77])
+          .setTitle(`🚨 Acción Disciplinaria: Ban`)
+          .setDescription(`El usuario ${member} ha sido vetado del servidor de manera exitosa.`)
+          .setImage('attachment://waiting-card.png')
+          .setTimestamp();
+
+      await interaction.reply({
+        flags: MessageFlags.Ephemeral,
+        embeds: [embed],
+        files: [attachment]
+      })
+    } 
+  }
+};
+</file>
+
+<file path="src/events/clientOn/welcome.ts">
+import {
+  AttachmentBuilder,
+  EmbedBuilder,
+  Events,
+  GuildMember,
+} from "discord.js";
+import { createCanvas, loadImage } from "@napi-rs/canvas";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import chalk from "chalk";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export default {
+  name: Events.GuildMemberAdd,
+  once: false,
+
+  async execute(member: GuildMember) {
+    async function sendWelcome(envName: string) {
+      try {
+        const canvas = createCanvas(1024, 500);
+        const ctx = canvas.getContext("2d");
+
+        const background = await loadImage(
+          path.join(__dirname, "../assets/imgs/NIZOBg.png")
+        );
+
+        ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
+
+        const radius = 120;
+        const x = canvas.width / 2;
+        const y = 160;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.clip();
+
+        const avatar = await loadImage(
+          member.user.displayAvatarURL({
+            extension: "png",
+            size: 256,
+          })
+        );
+
+        ctx.drawImage(avatar, x - radius, y - radius, radius * 2, radius * 2);
+        ctx.restore();
+
+        ctx.fillStyle = "#FFFFFF";
+        ctx.textAlign = "center";
+
+        ctx.font = "bold 50px monospace";
+        ctx.fillText("¡BIENVENIDO/A!", canvas.width / 2, 350);
+
+        ctx.font = "40px monospace";
+        ctx.fillStyle = "#5b1edf";
+        ctx.fillText(member.user.username, canvas.width / 2, 410);
+
+        const attachment = new AttachmentBuilder(canvas.toBuffer("image/png"), {
+          name: "welcome.png",
+        });
+
+        const embed = new EmbedBuilder()
+          .setColor(0xffffff)
+          .setImage("attachment://welcome.png");
+
+        const channelId = process.env[envName];
+
+        if (!channelId) {
+          console.error(chalk.red(`Variable ${envName} no configurada.`));
+          return;
+        }
+
+        const channel = member.guild.channels.cache.get(channelId);
+
+        if (channel?.isTextBased()) {
+          await channel.send({
+            embeds: [embed],
+            files: [attachment],
+          });
+        }
+      } catch (err) {
+        console.error(chalk.redBright("[Welcome Error]"), err);
+      }
+    }
+
+    if (member.user.bot) {
+      await sendWelcome("welcomeBotChannel");
+    } else {
+      await sendWelcome("welcomeChannel");
+    }
+  },
+};
+</file>
+
+<file path="src/events/clientOnce/readyClient.ts">
+import client from '#/client';
+import { Client, Events, Interaction } from 'discord.js';
+import chalk from 'chalk';
+
+export default {
+    name: Events.ClientReady,
+    once: true,
+
+    async execute(readyClient: Client<true>) {
+        console.log(chalk.bold.magenta(`KNIGHT IS RUNNING AS ${readyClient.user.tag}`));
+        readyClient.user.setStatus('idle');
+    }
+}
+</file>
+
+<file path="src/handlers/command.ts">
+import client from '#/client'
+import fs from 'node:fs';
+import path from 'node:path';
+import chalk from 'chalk';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { REST, Routes } from 'discord.js';
+import 'dotenv/config';
+
+async function loadCommands() {
+
+    const TOKEN = process.env['TOKEN'];
+    const clientId = process.env['clientId'];
+    const guildId = process.env['guildId'];
+
+    const commands = [];
+
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+
+    const commandsPath = path.join(__dirname, '..', 'commands');
+
+    const folders = fs.readdirSync(commandsPath);
+
+    for (const folder of folders) {
+        const folderPath = path.join(commandsPath, folder);
+        const commandFiles = fs.readdirSync(folderPath).filter(file => file.endsWith('.ts'));
+        for (const file of commandFiles) {
+            const filePath = path.join(folderPath, file);
+            const command = await import(pathToFileURL(filePath).href);
+            const create = command.default;
+        
+
+            if ('data' in create && 'execute' in create) {
+                commands.push(create.data.toJSON());
+            } else {
+                console.error(chalk.bold.red(`[WARNING] The command has an error, chek it out`));
+            }
+
+            client.commands.set(create.data.name, create)
+            console.log(chalk.bold.green(`✅ Command ${create.data.name} loaded: execute function verified`));
+        }
+    };
+
+    const rest = new REST().setToken(TOKEN!);
+
+        try {
+            console.log(chalk.bold.blueBright(`${commands.length} commands are handling, wait some seconds, please...`));
+            const data = await rest.put(Routes.applicationGuildCommands(clientId!,guildId!), { body: commands });
+            console.log(chalk.bold.magentaBright(`${commands.length} commands could be sent`));
+        } catch (err) {
+            console.log(chalk.bold.red(`The commands couldnt be sent, check it: [${err}]`));
+        }
+};
+
+export { loadCommands };
+</file>
+
+<file path="src/handlers/event.ts">
+import client from '#/client'
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL, Url } from 'node:url';
+
+async function loadEvents() {
+
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+
+    const eventsPath = path.join(__dirname, '..', 'events');
+    const folders = fs.readdirSync(eventsPath);
+
+    for (const folder of folders) {
+        const folderPath = path.join(eventsPath, folder);
+        const eventFiles = fs.readdirSync(folderPath).filter(file => file.endsWith('.ts'));
+        for (const file of eventFiles) {
+            const filePath = path.join(folderPath, file);
+            const eventDefault = await import(pathToFileURL(filePath).href);
+            const event = eventDefault.default;
+            
+            if (event.once) {
+            client.once(event.name, (...args) => event.execute(...args));
+            } else {
+                client.on(event.name, (...args) => event.execute(...args));
+            }
+        }
+    }
+};
+
+export { loadEvents };
+</file>
+
+<file path="src/structures/customClient.ts">
+import { Client, Collection, GatewayIntentBits, Partials } from 'discord.js'
+
+class CustomClient extends Client {
+    public commands = 
+    new Collection<
+    string,
+    Function
+    >();
+
+    constructor() {
+        super({
+            intents:[
+                GatewayIntentBits.GuildExpressions,
+                GatewayIntentBits.GuildIntegrations,
+                GatewayIntentBits.GuildInvites,
+                GatewayIntentBits.GuildMembers,
+                GatewayIntentBits.GuildMessagePolls,
+                GatewayIntentBits.GuildMessageReactions,
+                GatewayIntentBits.GuildMessageTyping,
+                GatewayIntentBits.GuildMessages,
+                GatewayIntentBits.GuildModeration,
+                GatewayIntentBits.GuildPresences,
+                GatewayIntentBits.GuildScheduledEvents,
+                GatewayIntentBits.GuildVoiceStates,
+                GatewayIntentBits.GuildWebhooks,
+                GatewayIntentBits.Guilds
+            ],
+            partials:[
+                Partials.Channel,
+                Partials.GuildMember,
+                Partials.GuildScheduledEvent,
+                Partials.Message,
+                Partials.Poll,
+                Partials.PollAnswer,
+                Partials.Reaction,
+                Partials.SoundboardSound,
+                Partials.User
+            ],
+            allowedMentions: {
+                parse: ["everyone", "roles", "users"],
+                repliedUser: true,
+            },
+            failIfNotExists: false,
+        });
+    }
+};
+
+export default CustomClient;
+</file>
+
+<file path=".gitignore">
+.env
+node_modules/
+</file>
+
+<file path="client.ts">
+import customClient from '@/structures/customClient';
+import chalk from 'chalk';
+
+const client = new customClient();
+
+if(client) {
+  console.log(chalk.bold.greenBright('The customClient has charged! All fine'));
+}
+
+else {
+  console.error(chalk.bold.redBright(`Client wasn't able to charge.`));
+}
+
+export default client;
+</file>
+
+<file path="CONTRIBUTING.md">
+
+</file>
+
+<file path="index.ts">
+import client from '#/client';
+import { loadEvents } from '@/handlers/event';
+import { loadCommands } from '@/handlers/command';
+import chalk from 'chalk';
+import 'dotenv/config';
+
+const TOKEN = process.env['TOKEN'];
+
+async function starting() {
+  loadEvents();
+  await loadCommands();
+  if (TOKEN) {
+    console.log(chalk.bold.blueBright(`Knight is starting... Please wait.`));
+    try {
+      client.login(TOKEN);
+      console.log(chalk.bold.greenBright(`Knight started perfecttly as ${client.user?.username}`));
+    } 
+    catch (err) {
+      console.error(chalk.bold.redBright(`Error detected: [${err}]`));
+    }
+  }
+};
+
+starting();
+</file>
+
+<file path="LICENSE.md">
+
+</file>
+
+<file path="package.json">
+{
+  "name": "knight",
+  "version": "0.1.0",
+  "description": "",
+  "keywords": [
+    "knight",
+    "bot"
+  ],
+  "homepage": "https://github.com/NickHubDev/KNIGHT#readme",
+  "bugs": {
+    "url": "https://github.com/NickHubDev/KNIGHT/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NickHubDev/KNIGHT.git"
+  },
+  "license": "MIT",
+  "author": "NIZ00LAX",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "test": "tsx index.ts"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^1.0.9",
+    "chalk": "^6.0.0",
+    "discord.js": "^14.27.0",
+    "dotenv": "^18.0.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
+</file>
+
+<file path="README.md">
+
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "strict": true,
+    "allowUnusedLabels": false,
+    "allowUnreachableCode": false,
+    "exactOptionalPropertyTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+
+    "isolatedModules": true,
+
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "paths": {
+      "@/*" : ["./src/*"],
+      "#/*" : ["./*"]
+    }
+  },
+  "$schema": "https://www.schemastore.org/tsconfig",
+  "_version": "2.0.0"
+}
+</file>
+
+</files>

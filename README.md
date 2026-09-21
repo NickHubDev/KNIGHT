@@ -1,0 +1,1 @@
+[Imagen Logo Knight](/src/assets/imgs/KnightLogo.png)

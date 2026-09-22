@@ -65,29 +65,29 @@ npm run start
 
 <h1 align="center"> ✨ Features</h1>
 
-## 🛡️ Moderation
+#### 🛡️ Moderation
 
 Powerful moderation tools designed for community management.
 
 `ban` • `unban` • `waiting` • `warn` • `clear` • **more coming soon...**
 
-## 💻 Programmer Info
+#### 💻 Programmer Info
 
 Utilities created especially for developers.
 
 `info` • `test` • `creatormsg` • `status` • `vulnerabilities`
 
-## 📡 Reply & Information
+#### 📡 Reply & Information
 
 Everyday commands for users and server interaction.
 
 `ping` • `userinfo` • `botinfo` • `afk` • `afkoff` • `nizolinks`
 
-## 🧠 Custom Client
+#### 🧠 Custom Client
 
 Knight uses an **extended Discord Client** to provide stronger typing, centralized collections and a cleaner architecture across the entire project.
 
-## 🧩 Utilities
+#### 🧩 Utilities
 
 Reusable event-based systems that allow the creation of dynamic server features:
 
@@ -97,13 +97,13 @@ Reusable event-based systems that allow the creation of dynamic server features:
 * 🚫 Appeal Ban System
 * 🧪 Beta Tester Registration
 
-# 🤝 Contributing
+<h1 align="center"> 🤝 Contributing</h1>
 
 Contributions are always welcome!
 
-If you'd like to improve Knight, please read the **[Contributing Guide](./CONTRIBUTING.md)** before opening a Pull Request.
+If you'd like to improve Knight, please read the **[CONTRIBUTING](./CONTRIBUTING.md)** before opening a Pull Request.
 
-# 📜 License
+<h1 align="center">📜 License</h1>
 
 **Knight** is licensed under the **Knight Proprietary License**.
 

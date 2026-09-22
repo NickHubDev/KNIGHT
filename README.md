@@ -1,12 +1,10 @@
-# <p align="center"><a href="https://github.com/NickHubDev"><img src="/src/assets/imgs/KnightLogo.jpg" width="300" alt="Knight Logo"/></a></p>
+<a href="https://github.com/NickHubDev"><img src="/src/assets/imgs/KnightLogo.jpg" width="300" alt="Knight Logo"/></a>
 
 <h1 align="center"> 🦇 Knight.ts.bot</h1>
 
 <p align="center"><strong>Developer-Friendly • Moderation • Utilities • Information • Fun</strong></p>
 
 <p align="center">The official Discord bot for the <strong>NIZOLAX Community,</strong> built with <strong>TypeScript</strong> and <strong>Discord.js v14.</strong></a>
-
-
 
 <p align="center">
 

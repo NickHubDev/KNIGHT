@@ -1,4 +1,4 @@
-# <div align="center"><a href="https://github.com/NickHubDev"><img src="/src/assets/imgs/KnightLogo.jpg" width="300" alt="Knight Logo"/></a>
+# <p align="center"><a href="https://github.com/NickHubDev"><img src="/src/assets/imgs/KnightLogo.jpg" width="300" alt="Knight Logo"/></a></p>
 
 <h1 align="center"> 🦇 Knight.ts.bot</h1>
 
@@ -6,7 +6,7 @@
 
 <p align="center">The official Discord bot for the <strong>NIZOLAX Community,</strong> built with <strong>TypeScript</strong> and <strong>Discord.js v14.</strong></a>
 
-</div>
+
 
 <p align="center">
 
@@ -102,6 +102,7 @@ Reusable event-based systems that allow the creation of dynamic server features:
 Contributions are always welcome!
 
 If you'd like to improve Knight, please read the **[CONTRIBUTING](./CONTRIBUTING.md)** before opening a Pull Request.
+<br>
 
 <h1 align="center">📜 License</h1>
 

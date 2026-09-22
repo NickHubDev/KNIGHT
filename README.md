@@ -1,4 +1,4 @@
-<a href="https://github.com/NickHubDev"><img src="/src/assets/imgs/KnightLogo.jpg" width="300" alt="Knight Logo"/></a>
+<p align="center"><a href="https://github.com/NickHubDev"><img src="/src/assets/imgs/KnightLogo.jpg" width="300" alt="Knight Logo"/></a></p>
 
 <h1 align="center"> 🦇 Knight.ts.bot</h1>
 
